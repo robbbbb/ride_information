@@ -1,16 +1,23 @@
 from django.shortcuts import get_object_or_404, get_list_or_404
 
 from rest_framework import viewsets, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..serializer.user import UserSerializer
 from ..models.user import User
 from ..utils.pagination import CustomPaginationSettings
+from ..utils.permission import IsAdminUser
 
 
 class UserViewSet(viewsets.ViewSet):
     serializer_class = UserSerializer
     pagination_class = CustomPaginationSettings
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def _get_user(self, pk):
+        # Helper method to get the user by primary key (pk).
+        return get_object_or_404(User, pk=pk)
 
     def list(self, request):
         queryset = get_list_or_404(User)
@@ -28,27 +35,24 @@ class UserViewSet(viewsets.ViewSet):
         serializer.save()
         return Response({
             'message': 'User created successfully',
-            "user": serializer.data,
-
         }, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk):
-        user = get_object_or_404(User, pk=pk)
+        user = self._get_user(pk)
         serializer = self.serializer_class(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, pk):
-        user = get_object_or_404(User, pk=pk)
+        user = self._get_user(pk)
         serializer = UserSerializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({
             'message': 'User updated successfully',
-            'user': serializer.data,
         }, status.HTTP_200_OK)
 
     def destroy(self, request, pk):
-        user = get_object_or_404(User, pk=pk)
+        user = self._get_user(pk)
         user.delete()
         return Response({
             'message': 'User deleted successfully'
